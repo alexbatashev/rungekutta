@@ -47,10 +47,11 @@ class PlotCanvas(FigureCanvas):
         if self.ode is not None:
             rc('text', usetex=True)
             self.imrk.clear()
-            self.imrk.plot(self.data[0], self.data[1], 'r-')
-            self.imrk.plot(self.data[2], self.data[3], 'b-')
+            self.imrk.plot(self.data[0], self.data[1], 'r-', label="Implicit Runge-Kutta")
+            self.imrk.plot(self.data[2], self.data[3], 'b-', label="Explicit Runge-Kutta")
             self.figure.suptitle("$\\displaystyle y\'=" + solver.formula_buitifier(self.ode) + "$")
-            self.imrk.quiver(self.X, self.Y, self.dX, self.dY)
+            self.imrk.quiver(self.X, self.Y, self.dX, self.dY, label="Slope field")
+            self.imrk.legend(loc='upper right')
         self.draw()
         self.repaint()
 

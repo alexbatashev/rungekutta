@@ -209,8 +209,8 @@ def slope_field(raw_expr, xmin, xmax, ymin, ymax):
     ev_expr = parse_expr(raw_expr, evaluate=0)
     f = lambdify([x, y], [ev_expr], "numpy")
 
-    xs = np.linspace(xmin, xmax, 15)
-    ys = np.linspace(ymin, ymax, 15)
+    xs = np.linspace(xmin, xmax, 17)
+    ys = np.linspace(ymin, ymax, 17)
     X, Y = np.meshgrid(xs, ys)
     angle = np.arctan(f(xs, ys))
     return X.astype(np.float64), Y.astype(np.float64), np.cos(angle).astype(np.float64), np.sin(angle).astype(np.float64)
