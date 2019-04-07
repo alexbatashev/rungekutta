@@ -1,6 +1,14 @@
 import re
 import math
-from decimal import Decimal
+# from decimal import Decimal
+import numpy as np
+from sympy.parsing.sympy_parser import parse_expr
+from sympy.printing.theanocode import theano_function
+from sympy.abc import x
+from sympy.abc import y
+# import sympy.abc
+from sympy import *
+import theano
 
 ops = {
     "+": (lambda a, b: a + b),
@@ -51,20 +59,20 @@ def expand_arg(arg):
     if "log" in str(arg):
         pure = arg.replace("log[", "")
         pure = pure.replace("]", "")
-        return math.log(Decimal(pure))
+        return np.log(np.float64(pure))
     elif "sin" in str(arg):
         pure = arg.replace("sin[", "")
         pure = pure.replace("]", "")
-        return math.sin(Decimal(pure))
+        return np.sin(np.float64(pure))
     elif "cos" in str(arg):
         pure = arg.replace("cos[", "")
         pure = pure.replace("]", "")
-        return math.sin(Decimal(pure))
+        return np.sin(np.float64(pure))
     else:
         return arg
 
 
-def eval(expression):
+def eval_rpn(expression):
     tokens = expression.split()
     stack = []
 
@@ -72,17 +80,27 @@ def eval(expression):
         if token in ops:
             arg2 = expand_arg(stack.pop())
             arg1 = expand_arg(stack.pop())
-            result = ops[token](Decimal(arg1), Decimal(arg2))
+            result = ops[token](np.float64(arg1), np.float64(arg2))
             stack.append(str(result))
         else:
             stack.append(str(token))
 
-    return float(stack.pop())
+    return float(expand_arg(stack.pop()))
 
 
-def rungekutta(expr, x0, y0, xn, xk):
-    rpnexpr = toRpn(expr)
-    h = 0.02
+def rungekutta(raw_expr, x0, y0, xn, xk):
+    raw_expr = raw_expr.replace('^', "**")
+    if "x" not in raw_expr:
+        raw_expr += "+ 0*x"
+    if "y" not in raw_expr:
+        raw_expr += "+ 0*y"
+    ev_expr = parse_expr(raw_expr, evaluate=0)
+    print(ev_expr)
+    f = theano_function([x, y], [ev_expr])
+    print(f)
+
+    # rpnexpr = toRpn(expr)
+    h = abs(xk - xn) / 500
     k = abs(xk - x0) / h
     n = abs(xn - x0) / h
 
@@ -90,28 +108,20 @@ def rungekutta(expr, x0, y0, xn, xk):
     res_neg = [{'x': x0, 'y': y0}]
 
     for i in range(1, math.ceil(k)):
-        cexpr = rpnexpr.replace('x', str(res[i-1]['x']))
-        cexpr = cexpr.replace('y', str(res[i-1]['y']))
-        f = h * eval(cexpr)
-        ty = res[i-1]['y'] + f
-        x = h + res[i-1]['x']
-        cexpr = rpnexpr.replace('x', str(x))
-        cexpr = cexpr.replace('y', str(ty))
-        y = res[i-1]['y'] + h * (f + eval(cexpr)) / 2
-        res.append({'x': x, 'y': y})
+        fv = h * f(res[i - 1]['x'], res[i - 1]['y'])
+        ty = res[i - 1]['y'] + fv
+        tx = h + res[i - 1]['x']
+        yn1 = res[i - 1]['y'] + h * (fv + f(tx, ty)) / 2
+        res.append({'x': tx, 'y': yn1})
 
     h = -h
 
     for i in range(1, math.ceil(n)):
-        cexpr = rpnexpr.replace('x', str(res_neg[i-1]['x']))
-        cexpr = cexpr.replace('y', str(res_neg[i-1]['y']))
-        f = h * eval(cexpr)
-        ty = res_neg[i-1]['y'] + f
-        x = res_neg[i-1]['x'] + h
-        cexpr = rpnexpr.replace('x', str(x))
-        cexpr = cexpr.replace('y', str(ty))
-        y = res_neg[i-1]['y'] + h * (f + eval(cexpr)) / 2
-        res_neg.append({'x': x, 'y': y})
+        fv = h * f(res_neg[i - 1]['x'], res_neg[i - 1]['y'])
+        ty = res_neg[i - 1]['y'] + fv
+        tx = h + res_neg[i - 1]['x']
+        yn1 = res_neg[i - 1]['y'] + h * (fv + f(tx, ty)) / 2
+        res_neg.append({'x': tx, 'y': yn1})
 
     res_neg = res_neg[1:]
     res_neg = res_neg[::-1]

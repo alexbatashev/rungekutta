@@ -2,6 +2,7 @@ import sys
 
 from PyQt5.QtWidgets import QSizePolicy
 
+
 import mainwindow
 from PyQt5 import QtWidgets
 import solver
@@ -37,9 +38,11 @@ class PlotCanvas(FigureCanvas):
     def update_canvas(self):
         if self.ode is not None:
             rc('text', usetex=True)
+            self._dynamic_ax.clear()
             self._dynamic_ax.plot(self.data[0], self.data[1], 'r-')
             self.figure.suptitle("$\\displaystyle y\'=" + solver.formula_buitifier(self.ode) + "$ solution")
         self.draw()
+        self.repaint()
 
 
 class ExampleApp(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
