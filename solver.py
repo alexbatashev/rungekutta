@@ -92,7 +92,7 @@ def rungekutta(raw_expr, x0, y0, xn, xk):
         raw_expr += "+ 0*y"
     ev_expr = parse_expr(raw_expr)
     # print(ev_expr)
-    f = lambdify([x, y], [ev_expr])
+    f = lambdify([x, y], [ev_expr], "numpy")
     # print(f)
 
     # rpnexpr = toRpn(expr)
@@ -145,7 +145,7 @@ def rk4(raw_expr, x0, y0, xn, xk):
         raw_expr += "+ 0*y"
     ev_expr = parse_expr(raw_expr)
     # print(ev_expr)
-    f = lambdify([x, y], [ev_expr])
+    f = lambdify([x, y], [ev_expr], "numpy")
 
     # rpnexpr = toRpn(expr)
     h = abs(xk - xn) / 50
