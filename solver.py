@@ -2,11 +2,9 @@ import re
 import math
 import numpy as np
 from sympy.parsing.sympy_parser import parse_expr
-from sympy.printing.theanocode import theano_function
 from sympy.abc import x
 from sympy.abc import y
 from sympy import *
-import theano
 
 ops = {
     "+": (lambda a, b: a + b),
@@ -92,9 +90,9 @@ def rungekutta(raw_expr, x0, y0, xn, xk):
         raw_expr += "+ 0*x"
     if "y" not in raw_expr:
         raw_expr += "+ 0*y"
-    ev_expr = parse_expr(raw_expr, evaluate=0)
+    ev_expr = parse_expr(raw_expr)
     # print(ev_expr)
-    f = theano_function([x, y], [ev_expr])
+    f = lambdify([x, y], [ev_expr])
     # print(f)
 
     # rpnexpr = toRpn(expr)
@@ -109,10 +107,10 @@ def rungekutta(raw_expr, x0, y0, xn, xk):
     res_neg = [{'x': x0, 'y': y0}]
 
     for i in range(1, math.ceil(k)):
-        fv = h * f(res[i - 1]['x'], res[i - 1]['y'])
+        fv = h * f(res[i - 1]['x'], res[i - 1]['y'])[0]
         ty = res[i - 1]['y'] + fv
         tx = h + res[i - 1]['x']
-        yn1 = res[i - 1]['y'] + h * (fv + f(tx, ty)) / 2
+        yn1 = res[i - 1]['y'] + h * (fv + f(tx, ty)[0]) / 2
         res.append({'x': tx, 'y': yn1})
         if yn1 > ymax:
             ymax = yn1
@@ -122,10 +120,10 @@ def rungekutta(raw_expr, x0, y0, xn, xk):
     h = -h
 
     for i in range(1, math.ceil(n)):
-        fv = h * f(res_neg[i - 1]['x'], res_neg[i - 1]['y'])
+        fv = h * f(res_neg[i - 1]['x'], res_neg[i - 1]['y'])[0]
         ty = res_neg[i - 1]['y'] + fv
         tx = h + res_neg[i - 1]['x']
-        yn1 = res_neg[i - 1]['y'] + h * (fv + f(tx, ty)) / 2
+        yn1 = res_neg[i - 1]['y'] + h * (fv + f(tx, ty)[0]) / 2
         res_neg.append({'x': tx, 'y': yn1})
         if yn1 > ymax:
             ymax = yn1
@@ -145,10 +143,9 @@ def rk4(raw_expr, x0, y0, xn, xk):
         raw_expr += "+ 0*x"
     if "y" not in raw_expr:
         raw_expr += "+ 0*y"
-    ev_expr = parse_expr(raw_expr, evaluate=0)
+    ev_expr = parse_expr(raw_expr)
     # print(ev_expr)
-    f = theano_function([x, y], [ev_expr])
-    # print(f)
+    f = lambdify([x, y], [ev_expr])
 
     # rpnexpr = toRpn(expr)
     h = abs(xk - xn) / 50
@@ -164,10 +161,10 @@ def rk4(raw_expr, x0, y0, xn, xk):
     for i in range(1, math.ceil(k)):
         cx = res[i - 1]['x']
         cy = res[i - 1]['y']
-        k1 = f(cx, cy)
-        k2 = f(cx + h/2, cy + h * k1 / 2)
-        k3 = f(cx + h/2, cy + h * k2 / 2)
-        k4 = f(cx + h, cy + h * k3)
+        k1 = f(cx, cy)[0]
+        k2 = f(cx + h/2, cy + h * k1 / 2)[0]
+        k3 = f(cx + h/2, cy + h * k2 / 2)[0]
+        k4 = f(cx + h, cy + h * k3)[0]
         yn1 = cy + h * (k1 + k2 + k3 + k4) / 6
         xn1 = cx + h
         res.append({'x': xn1, 'y': yn1})
@@ -181,10 +178,10 @@ def rk4(raw_expr, x0, y0, xn, xk):
     for i in range(1, math.ceil(n)):
         cx = res_neg[i - 1]['x']
         cy = res_neg[i - 1]['y']
-        k1 = f(cx, cy)
-        k2 = f(cx + h / 2, cy + h * k1 / 2)
-        k3 = f(cx + h / 2, cy + h * k2 / 2)
-        k4 = f(cx + h, cy + h * k3)
+        k1 = f(cx, cy)[0]
+        k2 = f(cx + h / 2, cy + h * k1 / 2)[0]
+        k3 = f(cx + h / 2, cy + h * k2 / 2)[0]
+        k4 = f(cx + h, cy + h * k3)[0]
         yn1 = cy + h * (k1 + k2 + k3 + k4) / 6
         xn1 = cx + h
         res_neg.append({'x': xn1, 'y': yn1})
