@@ -1,12 +1,10 @@
 import re
 import math
-# from decimal import Decimal
 import numpy as np
 from sympy.parsing.sympy_parser import parse_expr
 from sympy.printing.theanocode import theano_function
 from sympy.abc import x
 from sympy.abc import y
-# import sympy.abc
 from sympy import *
 import theano
 
@@ -95,14 +93,17 @@ def rungekutta(raw_expr, x0, y0, xn, xk):
     if "y" not in raw_expr:
         raw_expr += "+ 0*y"
     ev_expr = parse_expr(raw_expr, evaluate=0)
-    print(ev_expr)
+    # print(ev_expr)
     f = theano_function([x, y], [ev_expr])
-    print(f)
+    # print(f)
 
     # rpnexpr = toRpn(expr)
-    h = abs(xk - xn) / 500
+    h = abs(xk - xn) / 50
     k = abs(xk - x0) / h
     n = abs(xn - x0) / h
+
+    ymin = 1000000
+    ymax = -1000000
 
     res = [{'x': x0, 'y': y0}]
     res_neg = [{'x': x0, 'y': y0}]
@@ -113,6 +114,10 @@ def rungekutta(raw_expr, x0, y0, xn, xk):
         tx = h + res[i - 1]['x']
         yn1 = res[i - 1]['y'] + h * (fv + f(tx, ty)) / 2
         res.append({'x': tx, 'y': yn1})
+        if yn1 > ymax:
+            ymax = yn1
+        if yn1 < ymin:
+            ymin = yn1
 
     h = -h
 
@@ -122,9 +127,90 @@ def rungekutta(raw_expr, x0, y0, xn, xk):
         tx = h + res_neg[i - 1]['x']
         yn1 = res_neg[i - 1]['y'] + h * (fv + f(tx, ty)) / 2
         res_neg.append({'x': tx, 'y': yn1})
+        if yn1 > ymax:
+            ymax = yn1
+        if yn1 < ymin:
+            ymin = yn1
 
     res_neg = res_neg[1:]
     res_neg = res_neg[::-1]
     res_neg.extend(res)
 
-    return res_neg
+    return res_neg, ymin, ymax
+
+
+def rk4(raw_expr, x0, y0, xn, xk):
+    raw_expr = raw_expr.replace('^', "**")
+    if "x" not in raw_expr:
+        raw_expr += "+ 0*x"
+    if "y" not in raw_expr:
+        raw_expr += "+ 0*y"
+    ev_expr = parse_expr(raw_expr, evaluate=0)
+    # print(ev_expr)
+    f = theano_function([x, y], [ev_expr])
+    # print(f)
+
+    # rpnexpr = toRpn(expr)
+    h = abs(xk - xn) / 50
+    k = abs(xk - x0) / h
+    n = abs(xn - x0) / h
+
+    ymin = 1000000
+    ymax = -1000000
+
+    res = [{'x': x0, 'y': y0}]
+    res_neg = [{'x': x0, 'y': y0}]
+
+    for i in range(1, math.ceil(k)):
+        cx = res[i - 1]['x']
+        cy = res[i - 1]['y']
+        k1 = f(cx, cy)
+        k2 = f(cx + h/2, cy + h * k1 / 2)
+        k3 = f(cx + h/2, cy + h * k2 / 2)
+        k4 = f(cx + h, cy + h * k3)
+        yn1 = cy + h * (k1 + k2 + k3 + k4) / 6
+        xn1 = cx + h
+        res.append({'x': xn1, 'y': yn1})
+        if yn1 > ymax:
+            ymax = yn1
+        if yn1 < ymin:
+            ymin = yn1
+
+    h = -h
+
+    for i in range(1, math.ceil(n)):
+        cx = res_neg[i - 1]['x']
+        cy = res_neg[i - 1]['y']
+        k1 = f(cx, cy)
+        k2 = f(cx + h / 2, cy + h * k1 / 2)
+        k3 = f(cx + h / 2, cy + h * k2 / 2)
+        k4 = f(cx + h, cy + h * k3)
+        yn1 = cy + h * (k1 + k2 + k3 + k4) / 6
+        xn1 = cx + h
+        res_neg.append({'x': xn1, 'y': yn1})
+        if yn1 > ymax:
+            ymax = yn1
+        if yn1 < ymin:
+            ymin = yn1
+
+    res_neg = res_neg[1:]
+    res_neg = res_neg[::-1]
+    res_neg.extend(res)
+
+    return res_neg, ymin, ymax
+
+
+def slope_field(raw_expr, xmin, xmax, ymin, ymax):
+    raw_expr = raw_expr.replace('^', "**")
+    if "x" not in raw_expr:
+        raw_expr += "+ 0*x"
+    if "y" not in raw_expr:
+        raw_expr += "+ 0*y"
+    ev_expr = parse_expr(raw_expr, evaluate=0)
+    f = lambdify([x, y], [ev_expr], "numpy")
+
+    xs = np.linspace(xmin, xmax, 15)
+    ys = np.linspace(ymin, ymax, 15)
+    X, Y = np.meshgrid(xs, ys)
+    angle = np.arctan(f(xs, ys))
+    return X.astype(np.float64), Y.astype(np.float64), np.cos(angle).astype(np.float64), np.sin(angle).astype(np.float64)

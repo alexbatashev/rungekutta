@@ -16,6 +16,10 @@ class PlotCanvas(FigureCanvas):
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         self.ode = None
         self.data = None
+        self.X = None
+        self.Y = None
+        self.dX = None
+        self.dY = None
         fig = Figure(figsize=(width, height), dpi=dpi)
 
         FigureCanvas.__init__(self, fig)
@@ -26,21 +30,27 @@ class PlotCanvas(FigureCanvas):
                                    QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
 
-        self._dynamic_ax = fig.subplots()
+        self.imrk = fig.subplots()
         # self._timer = self.new_timer(
         #     100, [(self._update_canvas, (), {})])
         # self._timer.start()
 
-    def setResult(self, data, ode):
+    def setResult(self, data, ode, X, Y, dX, dY):
         self.ode = ode
         self.data = data
+        self.X = X
+        self.Y = Y
+        self.dX = dX
+        self.dY = dY
 
     def update_canvas(self):
         if self.ode is not None:
             rc('text', usetex=True)
-            self._dynamic_ax.clear()
-            self._dynamic_ax.plot(self.data[0], self.data[1], 'r-')
-            self.figure.suptitle("$\\displaystyle y\'=" + solver.formula_buitifier(self.ode) + "$ solution")
+            self.imrk.clear()
+            self.imrk.plot(self.data[0], self.data[1], 'r-')
+            self.imrk.plot(self.data[2], self.data[3], 'b-')
+            self.figure.suptitle("$\\displaystyle y\'=" + solver.formula_buitifier(self.ode) + "$")
+            self.imrk.quiver(self.X, self.Y, self.dX, self.dY)
         self.draw()
         self.repaint()
 
@@ -62,14 +72,20 @@ class ExampleApp(QtWidgets.QMainWindow, mainwindow.Ui_MainWindow):
         xn = float(self.xn.toPlainText())
         xk = float(self.xk.toPlainText())
 
-        res = solver.rungekutta(ode, x0, y0, xn, xk)
+        res, ymin, ymax = solver.rungekutta(ode, x0, y0, xn, xk)
+        res2, ymin2, ymax2 = solver.rk4(ode, x0, y0, xn, xk)
 
-        data = [[], []]
+        X, Y, dX, dY = solver.slope_field(ode, xn, xk, min(ymin, ymin2), max(ymax, ymax2))
+
+        data = [[], [], [], []]
 
         for d in res:
             data[0].append(float(d['x']))
             data[1].append(float(d['y']))
-        self.plot.setResult(data, ode)
+        for d in res2:
+            data[2].append(float(d['x']))
+            data[3].append(float(d['y']))
+        self.plot.setResult(data, ode, X, Y, dX, dY)
         self.plot.update_canvas()
 
 
